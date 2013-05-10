@@ -9,22 +9,61 @@ import (
         "strings"
 )
 
-func UStringToRune(s string) ([]rune, error) {
+func UStringToRune(s string) (r []rune, err error) {
+        pos := 0
+        // s0 := strings.Replace(s, "u", "", -1)
+        if n := strings.Index(s, "\\u"); n == -1 {
+                iLen := len(s)
+                r = make([]rune, iLen)
+                for i := 0; i < iLen; i++ {
+                        r[i] = rune(s[i])
+                }
+                return r, nil
+        } else {
+                pos = n
+                if n != 0 {
+                        r = make([]rune, n)
+                        for i := 0; i < n; i++ {
+                                r[i] = rune(s[i])
+                        }
+                }
+        }
+        sb := strings.Split(s[pos:], "\\u")
+        if pos != 0 {
+                r = make([]rune, len(sb))
+        } else {
+                r0 := make([]rune, len(sb))
+                r = append(r, r0...)
+        }
 
-        s0 := strings.Replace(s, "u", "", -1)
-        sb := strings.Split(s0, "\\")
-        r := make([]rune, len(sb))
         i := 0
         for _, v := range sb {
                 if v == "" {
                         continue
                 }
-                vv, err := strconv.ParseUint(v, 16, 32)
-                if err != nil {
-                        return nil, err
+                iLen := len(v)
+                if iLen <= 4 {
+                        vv, err := strconv.ParseUint(v, 16, 32)
+                        if err != nil {
+                                return nil, err
+                        }
+                        r[i] = rune(vv)
+                        i++
+                } else {
+                        vv, err := strconv.ParseUint(v[:4], 16, 32)
+                        if err != nil {
+                                return nil, err
+                        }
+                        r[i] = rune(vv)
+                        i++
+                        t := make([]rune, iLen-3)
+                        r = append(r, t...)
+                        for j := 4; j < iLen; j++ {
+                                r[i] = rune(v[j])
+                                i++
+                        }
                 }
-                r[i] = rune(vv)
-                i++
+
         }
         return r, nil
 }
@@ -37,10 +76,9 @@ func main() {
                 return
         }
 
-        /* e, _ := UStringToRune("\\u534e\\u4e2d\\u79d1\\u6280\\u5927\\u5b66\\u4e1c\\u6821\\u533a\\u6559\\u80b2\\u7f51")
-           fmt.Printf("%s\n", string(e))
-           return
-        */
+        /*e, _ := UStringToRune("\\u534e\\u4e2d\\u79d1\\u6280\\u5927\\u5b66\\u4e1c\\u6821\\u533a\\u6559\\u80b2\\u7f51")
+          fmt.Printf("%s\n", string(e))
+          return*/
 
         req_str := fmt.Sprintf("http://int.dpool.sina.com.cn/iplookup/iplookup.php?format=js&ip=%s", *ip)
         resp, err := http.Get(req_str)
@@ -70,74 +108,63 @@ func main() {
 
         for _, v := range nv {
                 vv := strings.Split(v, ":")
+                if len(vv) != 2 {
+                        continue
+                }
                 switch vv[0] {
                 case "ret":
-                        if len(vv[1]) == 0 || vv[1] == "0" {
+                        if vv[1] == "0" {
                                 fmt.Printf("未知IP地址[%s]\n", *ip)
                                 return
                         }
                 case "country":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        country = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                country = string(v)
                         }
                 case "province":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        province = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                province = string(v)
                         }
                 case "city":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        city = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                city = string(v)
                         }
                 case "district":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        district = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                district = string(v)
                         }
                 case "ISP":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        ISP = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                ISP = string(v)
                         }
                 case "type":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        vtype = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                vtype = string(v)
                         }
                 case "desc":
-                        if len(vv[1]) != 0 {
-                                if v, err := UStringToRune(vv[1]); err != nil {
-                                        fmt.Print("返回字符串格式非法\n")
-                                        return
-                                } else {
-                                        desc = string(v)
-                                }
+                        if v, err := UStringToRune(vv[1]); err != nil {
+                                fmt.Printf("返回字符串格式非法[%s]:%v\n", vv[1], err)
+                                return
+                        } else {
+                                desc = string(v)
                         }
                 }
         }
